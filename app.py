@@ -34,7 +34,7 @@ def detect_objects(image):
     outs = net.forward(output_layers)
 
     # Process detections
-    class_ids = []
+    class_names_detected = []
     confidences = []
     boxes = []
     for out in outs:
@@ -55,9 +55,12 @@ def detect_objects(image):
 
                 boxes.append([x, y, w, h])
                 confidences.append(float(confidence))
-                class_ids.append(class_id)
+                
+                if classes[class_id] not in class_names_detected:
+                    class_names_detected.append(classes[class_id])
 
-    return boxes, confidences, class_ids
+
+    return boxes, confidences, class_names_detected
 
 
 # Take in base64 string and return PIL image
@@ -71,11 +74,6 @@ def toRGB(image):
     return cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
 
 
-def np_encoder(object):
-    if isinstance(object, np.generic):
-        return object.item()
-
-
 @app.route("/detect_objects", methods=["POST"])
 def get_detected_objects():
 
@@ -84,11 +82,9 @@ def get_detected_objects():
     img_colored = toRGB(image_decoded)
 
     # Perform object detection
-    boxes, confidences, class_ids = detect_objects(img_colored)
+    boxes, confidences, items = detect_objects(img_colored)
 
-    # print(classIds)
-
-    class_ids_json = json.dumps(class_ids, default=np_encoder)
+    # print(items)
 
     # Return detected objects as JSON
     return jsonify(
@@ -96,7 +92,7 @@ def get_detected_objects():
             "message": "success",
             "boxes": boxes,
             "confidences": confidences,
-            "class_ids": class_ids_json,
+            "items": items,
         }
     )
 
