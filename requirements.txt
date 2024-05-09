@@ -1,6 +1,10 @@
+Flask-SocketIO
+python-engineio
+python-socketio
 Flask
-flask-socketio
 flask-cors
+gevent
+gevent-websocket
 opencv-python
 numpy
 Pillow

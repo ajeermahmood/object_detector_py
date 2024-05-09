@@ -2,15 +2,18 @@ from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
 import cv2
 import numpy as np
+
 # from flask_cors import CORS
 import base64
 from PIL import Image
 import io
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret00082#2%!'
+app.config["SECRET_KEY"] = "secret00082#2%!"
 socketio = SocketIO(app)
-# CORS(app)
+socketio.init_app(app, cors_allowed_origins="*")
+# CORS(app, origins="http://localhost:4200")
+
 
 # Load YOLO
 net = cv2.dnn.readNet("assets/yolov3.weights", "assets/yolov3.cfg")
@@ -72,10 +75,19 @@ def toRGB(image):
     return cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
 
 
+@socketio.on("connect")
+def handle_connect():
+    origin = request.headers.get("Origin")
+    print("New connection from origin:", origin)
+
+    emit("connected", "Successfully Connected")
+
+
 @socketio.on("image")
 def handle_image(data):
+    print("getting data.....")
     # Decode base64 image
-    image_decoded = stringToImage(data["img"])
+    image_decoded = stringToImage(data)
     img_colored = toRGB(image_decoded)
 
     # Perform object detection
@@ -88,4 +100,4 @@ def handle_image(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host="localhost")
