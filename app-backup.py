@@ -1,16 +1,13 @@
 from flask import Flask, jsonify, request
-from flask_socketio import SocketIO, emit
 import cv2
 import numpy as np
-# from flask_cors import CORS
+from flask_cors import CORS
 import base64
 from PIL import Image
 import io
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret00082#2%!'
-socketio = SocketIO(app)
-# CORS(app)
+CORS(app)
 
 # Load YOLO
 net = cv2.dnn.readNet("assets/yolov3.weights", "assets/yolov3.cfg")
@@ -18,11 +15,13 @@ classes = []
 with open("assets/coco.names", "r") as f:
     classes = [line.strip() for line in f.readlines()]
 layer_names = net.getLayerNames()
+# print(net.getUnconnectedOutLayers())
 output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
 
 # Function to perform object detection on an image
 def detect_objects(image):
+
     # Resize and normalize image
     img = cv2.resize(image, None, fx=0.4, fy=0.4)
     height, width, channels = img.shape
@@ -54,9 +53,10 @@ def detect_objects(image):
 
                 boxes.append([x, y, w, h])
                 confidences.append(float(confidence))
-
+                
                 if classes[class_id] not in class_names_detected:
                     class_names_detected.append(classes[class_id])
+
 
     return boxes, confidences, class_names_detected
 
@@ -72,20 +72,28 @@ def toRGB(image):
     return cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
 
 
-@socketio.on("image")
-def handle_image(data):
-    # Decode base64 image
-    image_decoded = stringToImage(data["img"])
+@app.route("/detect_objects", methods=["POST"])
+def get_detected_objects():
+
+    image_decoded = stringToImage(request.json["img"])
+
     img_colored = toRGB(image_decoded)
 
     # Perform object detection
     boxes, confidences, items = detect_objects(img_colored)
 
-    # Emit detected objects
-    emit(
-        "detected_objects", {"boxes": boxes, "confidences": confidences, "items": items}
+    # print(items)
+
+    # Return detected objects as JSON
+    return jsonify(
+        {
+            "message": "success",
+            "boxes": boxes,
+            "confidences": confidences,
+            "items": items,
+        }
     )
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    app.run(debug=True)
