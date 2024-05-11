@@ -7,6 +7,7 @@ import numpy as np
 import base64
 from PIL import Image
 import io
+import json
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret00082#2%!"
@@ -80,23 +81,27 @@ def handle_connect():
     origin = request.headers.get("Origin")
     print("New connection from origin:", origin)
 
-    emit("connected", "Successfully Connected")
-
 
 @socketio.on("image")
 def handle_image(data):
-    print("getting data.....")
-    # Decode base64 image
-    image_decoded = stringToImage(data)
-    img_colored = toRGB(image_decoded)
+    try:
+        print("getting data.....")
 
-    # Perform object detection
-    boxes, confidences, items = detect_objects(img_colored)
+        base64Image = data["img"]
+        # Decode base64 image
+        image_decoded = stringToImage(base64Image)
+        img_colored = toRGB(image_decoded)
 
-    # Emit detected objects
-    emit(
-        "detected_objects", {"boxes": boxes, "confidences": confidences, "items": items}
-    )
+        # Perform object detection
+        boxes, confidences, items = detect_objects(img_colored)
+
+        # Emit detected objects
+        emit(
+            "detected_objects",
+            {"boxes": boxes, "confidences": confidences, "items": items},
+        )
+    except Exception as e:
+        print("Error:", e)
 
 
 if __name__ == "__main__":
